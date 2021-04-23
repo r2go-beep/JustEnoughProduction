@@ -2,13 +2,11 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter.ttk import *
-from recipeManager import index
+from recipeManager import JSONIndexer
 
 
 class Main(tk.Frame):
         def __init__(self, master):
-                self.item_fluid_dict = index()
-
                 master.title('JustEnoughProduction')
                 master.geometry('500x500')
                 self.master = master
@@ -23,14 +21,26 @@ class Main(tk.Frame):
                 style.configure('transparent.TLabel', alpha = .5)
                 style.configure('exit_button.TButton', background = '#d92929', width = 0)
 
+                self.item_fluid_dict = {}
+                def load_and_index():
+                        self.item_fluid_dict = JSONIndexer.index(self, file_entry.get())
+
                 #-------------------------------
                 #TOP MENU
                 top_menu_frame = Frame(root, )
                 top_menu_frame.pack()
 
                 #button for a new recipe node
-                search_button=Button(top_menu_frame,style = 'default.TButton',text="New Crafting Node",command=lambda:self.new_recipe(''))
-                search_button.grid( row = 0, column = 0 )
+                new_crafting_node_button=Button(top_menu_frame,style = 'default.TButton',text='New Crafting Node',command=lambda:self.new_recipe(''))
+                new_crafting_node_button.grid( row = 0, column = 0 )
+
+                #read and index from file
+                file_entry=Entry(top_menu_frame, )
+                file_entry.insert(0,'2021-01-09_14-14-16.json')#default to json file for GTNH 2.1.0.0
+                file_entry.grid( row = 0, column = 2 )
+
+                file_button=Button(top_menu_frame, text='Read & Index', command = lambda: load_and_index())
+                file_button.grid( row = 0, column = 3 )
 
         #------------------------------------
         #make draggable
@@ -76,9 +86,9 @@ class Main(tk.Frame):
                 exit_button.grid( row = 0, column = 1, sticky = 'e' )
 
                 #search box
-                search_box = Entry(recipe_frame)
-                search_box.insert(0,item_name)
-                search_box.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')
+                search_entry = Entry(recipe_frame)
+                search_entry.insert(0,item_name)
+                search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')
                 
                 #duration & eu/t
                 if is_shaped_shapeless:#if its a shaped/shapeless
@@ -167,7 +177,7 @@ class Main(tk.Frame):
                         rec_num = 0 #reset the recipe number
 
                         nonlocal recipe_list
-                        if (item_name != search_box.get()):#user tries to select another machine without specifiying the search for it
+                        if (item_name != search_entry.get()):#user tries to select another machine without specifiying the search for it
                                 update_item_query()
                         recipe_list = dict_recipes.get(var_machine.get(),-1)#this only occurs when the name changes without searching
                         if (recipe_list == -1):#if they dictionary item does not exist in context
@@ -189,7 +199,7 @@ class Main(tk.Frame):
                 def update_item_query():
                         nonlocal item_name 
                         nonlocal dict_recipes
-                        item_name = search_box.get()
+                        item_name = search_entry.get()
 
                         if not(item_name in item_fluid_dict):
                                 dict_recipes = null_recipe
