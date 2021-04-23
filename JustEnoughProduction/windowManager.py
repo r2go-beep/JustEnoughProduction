@@ -1,6 +1,6 @@
 #last updated: 4/16/21
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, Menu
 from tkinter.ttk import *
 from recipeManager import JSONIndexer
 
@@ -109,6 +109,20 @@ class Main(tk.Frame):
                 output_title_label = Label(recipe_frame,style='info_box.TLabel',text = 'Output:')
                 output_title_label.grid( row = 4, column = 1 )
 
+                #------------------------------------
+                #right click menu for items
+                popup_item = ''
+                popup_menu = Menu(self.master, tearoff = 0)
+                popup_menu.add_command(label = 'Search', command = lambda:Main.new_recipe(self, popup_item) )
+                
+                def do_popup_menu(event, item):
+                        nonlocal popup_item
+                        popup_item = item
+                        try:
+                                popup_menu.tk_popup(event.x_root, event.y_root)
+                        finally:
+                                popup_menu.grab_release()
+
                 #items
                 items_frame = Frame(recipe_frame) #seperate frame for the items  
                 items_frame.grid( row = 5, column = 0, columnspan = 2)
@@ -128,8 +142,10 @@ class Main(tk.Frame):
                                         if (item != None):
                                                 label_item = Label(items_frame,style = 'info_box.TLabel',text = str(item['a'])+'x'+item['lN'])
                                                 label_item.grid( row = count_row, column = 0 )
+                                                label_item.bind("<Button-3>", lambda event, item=item['lN']:do_popup_menu(event, item))
                                                 count_row += 1
                                 label_item = Label(items_frame,style = 'info_box.TLabel',text = str(recipe['o']['a'])+'x'+recipe['o']['lN'])#output item
+                                label_item.bind("<Button-3>", lambda event, item=recipe['o']['lN']:do_popup_menu(event,item) )
                                 label_item.grid( row = 0, column = 1 )
                         else:
                                 duration_label['text'] = 'Duration:'+str(recipe['dur'])+'t @'+str(recipe['eut'])+'Eu/t'
@@ -137,19 +153,23 @@ class Main(tk.Frame):
                                 for item in recipe['iI']:
                                         label_item = Label(items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                         label_item.grid( row = count_row, column = 0 )
+                                        label_item.bind("<Button-3>", lambda event, item=item['lN']:do_popup_menu(event, item))
                                         count_row += 1
                                 for fluid in recipe['fI']:
                                         label_fluid = Label(items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
                                         label_fluid.grid( row = count_row, column = 0 )
+                                        label_fluid.bind("<Button-3>", lambda event, item=fluid['lN']:do_popup_menu(event, item))
                                         count_row += 1
                                 count_row = 0
                                 for item in recipe['iO']:
                                         label_item = Label(items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                         label_item.grid( row = count_row, column = 1 )
+                                        label_item.bind("<Button-3>", lambda event, item=item['lN']:do_popup_menu(event, item))
                                         count_row += 1
                                 for fluid in recipe['fO']:
                                         label_fluid = Label(items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
                                         label_fluid.grid( row = count_row, column = 1 )
+                                        label_fluid.bind("<Button-3>", lambda event, item=fluid['lN']:do_popup_menu(event, item))
                                         count_row += 1
                         items_frame.update()#shrink the box again
                         recipe_frame.update()
