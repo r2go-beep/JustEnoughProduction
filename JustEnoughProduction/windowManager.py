@@ -66,13 +66,21 @@ class Main(tk.Frame):
                 null_recipe = {'Cannot Find Item In Context':[{'en': True, 'dur':0,'eut':0,'iI':[],'iO':[],'fI':[],'fO':[]}]}
 
                 dict_recipes = null_recipe
+                usage_options = ['Input', 'Output']
                 if (item_name in item_fluid_dict):
                         dict_recipes = item_fluid_dict[item_name].input_in
 
+                if (item_name in item_fluid_dict and len(item_fluid_dict[item_name].input_in) == 0):
+                        dict_recipes = item_fluid_dict[item_name].output_in
+                        usage_options.remove('Input')
+                if (item_name in item_fluid_dict and len(item_fluid_dict[item_name].output_in) == 0):
+                        usage_options.remove('Ouput')
+
                 machine_name_list = list(dict_recipes.keys())
+
                 rec_num = 0#default to first recipe
 
-                recipe_list = dict_recipes[machine_name_list[0]]
+                recipe_list = dict_recipes[machine_name_list[0]]#default to first machine
                 recipe = recipe_list[rec_num]#default to first recipe
 
                 is_shaped_shapeless = ('o' in recipe)
@@ -113,12 +121,16 @@ class Main(tk.Frame):
                 #right click menu for items
                 popup_item = ''
                 popup_menu = Menu(self.master, tearoff = 0)
+                popup_menu.add_command(label = popup_item)#able to add a command here but nothing comes to mind yet
+                popup_menu.add_separator()
                 popup_menu.add_command(label = 'Search', command = lambda:Main.new_recipe(self, popup_item) )
+                popup_menu.add_command(label = 'Connect', )#for adding connecting lines need command
                 
                 def do_popup_menu(event, item):
                         nonlocal popup_item
                         popup_item = item
                         try:
+                                popup_menu.entryconfig(0, label = item)
                                 popup_menu.tk_popup(event.x_root, event.y_root)
                         finally:
                                 popup_menu.grab_release()
@@ -140,11 +152,11 @@ class Main(tk.Frame):
                                 count_row = 0
                                 for item in recipe['iI']:
                                         if (item != None):
-                                                label_item = Label(items_frame,style = 'info_box.TLabel',text = str(item['a'])+'x'+item['lN'])
+                                                label_item = Label(items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                                 label_item.grid( row = count_row, column = 0 )
                                                 label_item.bind("<Button-3>", lambda event, item=item['lN']:do_popup_menu(event, item))
                                                 count_row += 1
-                                label_item = Label(items_frame,style = 'info_box.TLabel',text = str(recipe['o']['a'])+'x'+recipe['o']['lN'])#output item
+                                label_item = Label(items_frame,style = 'item.TLabel',text = str(recipe['o']['a'])+'x'+recipe['o']['lN'])#output item
                                 label_item.bind("<Button-3>", lambda event, item=recipe['o']['lN']:do_popup_menu(event,item) )
                                 label_item.grid( row = 0, column = 1 )
                         else:
@@ -234,7 +246,6 @@ class Main(tk.Frame):
                         update_machine_query()#update the info
 
                 #usage drop down
-                usage_options = ['Input', 'Output']
                 var_usage = tk.StringVar(recipe_frame)
                 var_usage.set(usage_options[0])#default value
                 var_usage.trace ('w', lambda a,b,c :update_item_query() )
