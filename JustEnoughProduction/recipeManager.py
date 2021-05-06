@@ -5,12 +5,7 @@ import sys
 
 
 class JSONIndexer:
-    def __init__(self):
-        #JSON file of all the recipes
-        self.recipe_file = ''
-        #a dictionary of Items
-        self.item_fluid_dict = {}
-        self.recipe_dict = 0
+    item_fluid_dict = {}
 
     #Item/Fluid Class
     class item_fluid_class:
@@ -31,8 +26,8 @@ class JSONIndexer:
 
     #Adds a recipe to a dictionary with key item local name
     #type 0 means input, type 1 means output
-    def add_item_fluid(self, item, recipe, machine_name, is_used):#FIX:add shapped crafting
-        item_fluid_dict = self.item_fluid_dict
+    def add_item_fluid(self, item, recipe, machine_name, is_used):#FIX:use unlocalized name and add ore dict
+        item_fluid_dict = JSONIndexer.item_fluid_dict
         item_fluid_class = JSONIndexer.item_fluid_class
 
         if (item != None):#some shapeless recipes have no input type
@@ -63,7 +58,7 @@ class JSONIndexer:
         for recipeType in recipe_dict['sources']:
             if (recipeType['type'] == 'shaped' or recipeType['type'] == 'shapeless'):
                 for rec in recipeType['recipes']:
-                    JSONIndexer.add_item_fluid(self, rec['o'], rec, recipeType['type'], 0)#item out
+                    JSONIndexer.add_item_fluid(self, rec['o'], rec, recipeType['type'], 1)#item out
                     for item in rec['iI']:
                         JSONIndexer.add_item_fluid(self, item, rec, recipeType['type'], 0)#item in
 
@@ -80,4 +75,4 @@ class JSONIndexer:
                             JSONIndexer.add_item_fluid(self, item, rec, machine['n'], 1)
 
         print("Completed Indexing.")#that'll do pig
-        return(self.item_fluid_dict)
+        return(JSONIndexer.item_fluid_dict)
