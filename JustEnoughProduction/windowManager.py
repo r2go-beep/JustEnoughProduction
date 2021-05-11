@@ -57,7 +57,6 @@ class RecipeNode():
         linked_recipes = 0#this nodes inputs that are linked to other nodes outputs
 
         def __init__(self, item_name):
-                print("Searching for:"+ item_name)
                 global item_fluid_dict
                 self.item_name = item_name
                 self.null_recipe = {'Cannot Find Item In Context':[{'en': True, 'dur':0,'eut':0,'iI':[],'iO':[],'fI':[],'fO':[]}]}
@@ -73,6 +72,18 @@ class RecipeNode():
                 #Exit Button/Top of Frame
                 exit_button = Button(recipe_frame,style='exit_button.TButton', text = 'X', command = lambda:recipe_frame.destroy())
                 exit_button.grid( row = 0, column = 1, sticky = 'e' )
+
+                #Minimize button
+                self.sel = 0
+                def min_max_widget():
+                        if (self.sel == 0):
+                                self.hide_search_inputs()
+                        else:
+                                self.show_search_inputs()
+                        self.sel = (self.sel + 1) % 2
+
+                minimize_button = Button(recipe_frame,style='exit_button.TButton', text = '_', command = lambda:min_max_widget())
+                minimize_button.grid( row = 0, column = 1, sticky = 'e',  padx = 20)
 
                 #search box
                 self.search_entry = Entry(recipe_frame)
@@ -95,6 +106,10 @@ class RecipeNode():
                 output_title_label = Label(recipe_frame,style='info_box.TLabel',text = 'Output:')
                 output_title_label.grid( row = 4, column = 1 )
 
+                #items frame
+                self.items_frame = Frame(recipe_frame) #seperate frame for the items  
+                self.items_frame.grid( row = 5, column = 0, columnspan = 2)
+
                 #------------------------------------
                 #right click menu for items
                 self.popup_item = ''
@@ -103,10 +118,6 @@ class RecipeNode():
                 self.popup_menu.add_separator()
                 self.popup_menu.add_command(label = 'Search', command = lambda: RecipeNode(self.popup_item) )
                 self.popup_menu.add_command(label = 'Connect', )#for adding connecting lines need command
-
-                #items
-                self.items_frame = Frame(recipe_frame) #seperate frame for the items  
-                self.items_frame.grid( row = 5, column = 0, columnspan = 2)
 
                 #arrow functions
                 def inc_rec(self):
@@ -117,16 +128,20 @@ class RecipeNode():
                         self.rec_num = (self.rec_num - 1)%len(self.recipe_list)
                         self.reload()
                 
-                inc_rec_button = Button(recipe_frame, text = '>', command = lambda: inc_rec(self))
-                inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
+                self.inc_rec_button = Button(recipe_frame, text = '>', command = lambda: inc_rec(self))
+                self.inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
 
-                dec_rec_button = Button(recipe_frame, text = '<', command = lambda: dec_rec(self))
-                dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
+                self.dec_rec_button = Button(recipe_frame, text = '<', command = lambda: dec_rec(self))
+                self.dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
                 
                 #machine drop down
                 self.var_machine = tk.StringVar(recipe_frame)
                 self.var_machine.set('')#default value
-                self.var_machine.trace('w', lambda a,b,c :self.update_machine_query())#referenced before assignment but still do work
+                self.var_machine.trace('w', lambda a,b,c :self.update_machine_query())
+
+                self.machine_label = Label(recipe_frame, style='info_box.TLabel', text = self.var_machine.get())#wont see this until machine)dropdown goes away
+                self.machine_label.grid( row = 2, column = 0 )
+
                 self.machine_dropdown = OptionMenu(recipe_frame, self.var_machine)
                 self.machine_dropdown.config(style = 'machine.TMenubutton')
                 self.machine_dropdown.grid( row = 2, column = 0 )
@@ -141,6 +156,24 @@ class RecipeNode():
                 self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
 
                 self.update_item_query()#load
+
+        def show_search_inputs(self):
+                self.search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')#make sure this is the same as when init
+                self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
+                self.inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
+                self.dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
+                self.rec_out_of_label.grid( row = 3, column = 0, columnspan = 2, sticky = 'n')
+                self.machine_dropdown.grid( row = 2, column = 0 )
+
+        def hide_search_inputs(self):
+                self.search_entry.grid_forget()
+                self.usage_dropdown.grid_forget()
+                self.inc_rec_button.grid_forget()
+                self.dec_rec_button.grid_forget()
+                self.rec_out_of_label.grid_forget()
+                self.machine_dropdown.grid_forget()
+                self.machine_label['text'] = self.var_machine.get()
+
         #---------------END __INIT__----------------------
         
         def do_popup_menu(self, event, item):
@@ -208,7 +241,7 @@ class RecipeNode():
                 if (self.recipe_list == -1):#if they dictionary item does not exist in context
                         self.recipe_list = next(iter(self.null_recipe.values()))
 
-                self.is_shaped_shapeless = ('o' in self.recipe_list[0])#switch to shapeless
+                self.is_shaped_shapeless = ('o' in self.recipe_list[0])#update is_shaped_shapeless
                 self.reload()
 
         #search for a new item
