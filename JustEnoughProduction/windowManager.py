@@ -33,12 +33,12 @@ class Main(tk.Frame):
 
                 #-------------------------------
                 #TOP MENU
-                top_menu_frame = Frame(master, )
-                top_menu_frame.pack()
+                top_menu_frame = Frame(root, )
+                top_menu_frame.place(x = 0, y = 0)
 
                 #button for a new recipe node
                 new_crafting_node_button=Button(top_menu_frame,style = 'default.TButton',text='New Crafting Node',command=lambda:RecipeNode(''))
-                new_crafting_node_button.grid( row = 0, column = 0 )
+                new_crafting_node_button.grid(row = 0, column = 1)
 
                 #read and index from file
                 file_entry=Entry(top_menu_frame, )
@@ -54,7 +54,6 @@ class Main(tk.Frame):
 #-------------------------------------
 #make a new recipe node 
 class RecipeNode():
-        linked_recipes = 0#this nodes inputs that are linked to other nodes outputs
 
         def __init__(self, item_name):
                 global item_fluid_dict
@@ -62,28 +61,20 @@ class RecipeNode():
                 self.null_recipe = {'Cannot Find Item In Context':[{'en': True, 'dur':0,'eut':0,'iI':[],'iO':[],'fI':[],'fO':[]}]}
 
                 self.dict_recipes = self.null_recipe
+                self.potential_connect = None#to help connect nodes
+
+                self.input_recipes = None #the list of nodes that this node has as input
+                self.output_recipes = None #the list of nodes that this node has as input
+
+                self.lines_out = []
+                self.lines_in = []
 
                 #--UI WORK---
                 recipe_frame = Frame(root, style = 'recipe.TFrame' )
                 self.recipe_frame = recipe_frame
+                self.recipe_frame.node = self #for a reference back to this class
                 self.make_draggable(recipe_frame)
-                recipe_frame.pack()
-
-                #Exit Button/Top of Frame
-                exit_button = Button(recipe_frame,style='exit_button.TButton', text = 'X', command = lambda:recipe_frame.destroy())
-                exit_button.grid( row = 0, column = 1, sticky = 'e' )
-
-                #Minimize button
-                self.sel = 0
-                def min_max_widget():
-                        if (self.sel == 0):
-                                self.hide_search_inputs()
-                        else:
-                                self.show_search_inputs()
-                        self.sel = (self.sel + 1) % 2
-
-                minimize_button = Button(recipe_frame,style='exit_button.TButton', text = '_', command = lambda:min_max_widget())
-                minimize_button.grid( row = 0, column = 1, sticky = 'e',  padx = 20)
+                recipe_frame.place(x = 100, y = 30)
 
                 #search box
                 self.search_entry = Entry(recipe_frame)
@@ -110,15 +101,6 @@ class RecipeNode():
                 self.items_frame = Frame(recipe_frame) #seperate frame for the items  
                 self.items_frame.grid( row = 5, column = 0, columnspan = 2)
 
-                #------------------------------------
-                #right click menu for items
-                self.popup_item = ''
-                self.popup_menu = Menu(root, tearoff = 0)
-                self.popup_menu.add_command(label = self.popup_item)#able to add a command here but nothing comes to mind yet
-                self.popup_menu.add_separator()
-                self.popup_menu.add_command(label = 'Search', command = lambda: RecipeNode(self.popup_item) )
-                self.popup_menu.add_command(label = 'Connect', )#for adding connecting lines need command
-
                 #arrow functions
                 def inc_rec(self):
                         self.rec_num = (self.rec_num + 1)%len(self.recipe_list)
@@ -128,11 +110,11 @@ class RecipeNode():
                         self.rec_num = (self.rec_num - 1)%len(self.recipe_list)
                         self.reload()
                 
-                self.inc_rec_button = Button(recipe_frame, text = '>', command = lambda: inc_rec(self))
-                self.inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
+                inc_rec_button = Button(recipe_frame, text = '>', command = lambda: inc_rec(self))
+                inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
 
-                self.dec_rec_button = Button(recipe_frame, text = '<', command = lambda: dec_rec(self))
-                self.dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
+                dec_rec_button = Button(recipe_frame, text = '<', command = lambda: dec_rec(self))
+                dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
                 
                 #machine drop down
                 self.var_machine = tk.StringVar(recipe_frame)
@@ -155,34 +137,60 @@ class RecipeNode():
                 self.usage_dropdown.config(style = 'default.TMenubutton')
                 self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
 
+                #Exit Button/Top of Frame
+                def remove_node():
+                        self.destroy_all_connection(self)
+                        recipe_frame.destroy()
+                exit_button = Button(recipe_frame,style='exit_button.TButton', text = 'X', command = lambda:remove_node())#need to also remove the line
+                exit_button.grid( row = 0, column = 1, sticky = 'e' )
+
+                #Minimize button
+                sel = 0
+                def show_search_inputs():
+                        self.search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')#make sure this is the same as when init
+                        self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
+                        inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
+                        dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
+                        self.rec_out_of_label.grid( row = 3, column = 0, columnspan = 2, sticky = 'n')
+                        self.machine_dropdown.grid( row = 2, column = 0 )
+                        self.update_connections(self)
+
+                def hide_search_inputs():
+                        self.search_entry.grid_forget()
+                        self.usage_dropdown.grid_forget()
+                        inc_rec_button.grid_forget()
+                        dec_rec_button.grid_forget()
+                        self.rec_out_of_label.grid_forget()
+                        self.machine_dropdown.grid_forget()
+                        self.machine_label['text'] = self.var_machine.get()
+                        self.update_connections(self)
+
+                def min_max_widget():
+                        nonlocal sel
+                        if (sel == 0):
+                                hide_search_inputs()
+                        else:
+                                show_search_inputs()
+                        sel = (sel + 1) % 2
+
+                minimize_button = Button(recipe_frame,style='exit_button.TButton', text = '_', command = lambda:min_max_widget())
+                minimize_button.grid( row = 0, column = 1, sticky = 'e',  padx = 20)
+
+                #------------------------------------
+                #right click menu for items
+                self.popup_item = ''
+                self.popup_is_input = True#True if item is apart of the input
+                self.popup_menu = Menu(root, tearoff = 0)
+                self.popup_menu.add_command(label = self.popup_item)#able to add a command here but nothing comes to mind yet
+                self.popup_menu.add_separator()
+                self.popup_menu.add_command(label = 'Search', command = lambda: RecipeNode(self.popup_item) )
+                self.popup_menu.add_command(label = 'Connect', command = lambda: self.make_potential_connection())
+                self.popup_menu.add_command(label = 'Disconnect', command = lambda: self.destroy_connection(self, self.popup_item, self.popup_is_input))
+                self.popup_menu.add_command(label = 'Fix Arrows', command = lambda: self.update_connections(self))
+
                 self.update_item_query()#load
 
-        def show_search_inputs(self):
-                self.search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')#make sure this is the same as when init
-                self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
-                self.inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
-                self.dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
-                self.rec_out_of_label.grid( row = 3, column = 0, columnspan = 2, sticky = 'n')
-                self.machine_dropdown.grid( row = 2, column = 0 )
-
-        def hide_search_inputs(self):
-                self.search_entry.grid_forget()
-                self.usage_dropdown.grid_forget()
-                self.inc_rec_button.grid_forget()
-                self.dec_rec_button.grid_forget()
-                self.rec_out_of_label.grid_forget()
-                self.machine_dropdown.grid_forget()
-                self.machine_label['text'] = self.var_machine.get()
-
         #---------------END __INIT__----------------------
-        
-        def do_popup_menu(self, event, item):
-                self.popup_item = item
-                try:
-                        self.popup_menu.entryconfig(0, label = item)
-                        self.popup_menu.tk_popup(event.x_root, event.y_root)
-                finally:
-                        self.popup_menu.grab_release()
 
         #updates duration_label and input/output items
         def reload(self): 
@@ -199,10 +207,10 @@ class RecipeNode():
                                 if (item != None):
                                         label_item = Label(self.items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                         label_item.grid( row = count_row, column = 0 )
-                                        label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item))
+                                        label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item, True))
                                         count_row += 1
                         label_item = Label(self.items_frame,style = 'item.TLabel',text = str(recipe['o']['a'])+'x'+recipe['o']['lN'])#output item
-                        label_item.bind("<Button-3>", lambda event, item=recipe['o']['lN']:self.do_popup_menu(event,item) )
+                        label_item.bind("<Button-3>", lambda event, item=recipe['o']['lN']:self.do_popup_menu(event, item, False))
                         label_item.grid( row = 0, column = 1 )
                 else:
                         self.duration_label['text'] = 'Duration:'+str(recipe['dur'])+'t @'+str(recipe['eut'])+'Eu/t'
@@ -210,23 +218,23 @@ class RecipeNode():
                         for item in recipe['iI']:
                                 label_item = Label(self.items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                 label_item.grid( row = count_row, column = 0 )
-                                label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item))
+                                label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item, True))
                                 count_row += 1
                         for fluid in recipe['fI']:
-                                label_fluid = Label(self.items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
-                                label_fluid.grid( row = count_row, column = 0 )
-                                label_fluid.bind("<Button-3>", lambda event, item=fluid['lN']:self.do_popup_menu(event, item))
+                                label_item = Label(self.items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
+                                label_item.grid( row = count_row, column = 0 )
+                                label_item.bind("<Button-3>", lambda event, item=fluid['lN']:self.do_popup_menu(event, item, True))
                                 count_row += 1
                         count_row = 0
                         for item in recipe['iO']:
                                 label_item = Label(self.items_frame,style = 'item.TLabel',text = str(item['a'])+'x'+item['lN'])
                                 label_item.grid( row = count_row, column = 1 )
-                                label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item))
+                                label_item.bind("<Button-3>", lambda event, item=item['lN']:self.do_popup_menu(event, item, False))
                                 count_row += 1
                         for fluid in recipe['fO']:
-                                label_fluid = Label(self.items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
-                                label_fluid.grid( row = count_row, column = 1 )
-                                label_fluid.bind("<Button-3>", lambda event, item=fluid['lN']:self.do_popup_menu(event, item))
+                                label_item = Label(self.items_frame,style = 'fluid.TLabel',text = str(fluid['a'])+'ml '+fluid['lN'])
+                                label_item.grid( row = count_row, column = 1 )
+                                label_item.bind("<Button-3>", lambda event, item=fluid['lN']:self.do_popup_menu(event, item, False))
                                 count_row += 1
                 self.items_frame.update()#update item box
                 self.recipe_frame.update()
@@ -264,6 +272,133 @@ class RecipeNode():
                 self.machine_dropdown.set_menu(machine_name_list[0], *machine_name_list)
 
                 self.update_machine_query()#update the info
+
+        #connect nodes
+        def get_clicked(self, event):
+                root.unbind('<Button-1>')
+                self.potential_connect = event.widget
+                self.make_potential_connection()
+
+        def make_potential_connection(self ):
+                if (self.potential_connect == None) :
+                        root.bind("<Button-1>", self.get_clicked)
+                else:
+                        if hasattr( self.potential_connect.master.master, 'node') and (self != self.potential_connect.master.master.node):#protects against choosing a widget that isnt an item
+                                item = self.popup_item
+                                if self.popup_is_input:
+                                        self.create_connection(item, self.potential_connect.master.master.node, self)
+                                else:
+                                        self.create_connection(item, self, self.potential_connect.master.master.node )
+                        self.potential_connect = None#reset so that its able to try to have another connection
+
+        def destroy_all_connection(self, node):
+                if node.input_recipes != None:
+                        for connected_node in node.input_recipes:
+                                if (connected_node != None):
+                                        index = node.input_recipes.index(connected_node)
+                                        if index < len(node.recipe_list[node.rec_num]['iI']):
+                                                self.destroy_connection(node, node.recipe_list[node.rec_num]['iI'][index]['lN'], True)
+                                        else:
+                                                self.destroy_connection(node, node.recipe_list[node.rec_num]['fI'][index - len(node.recipe_list[node.rec_num]['iI'])]['lN'], True)
+                if node.output_recipes != None:
+                        for connected_node in node.output_recipes:
+                                if (connected_node != None):
+                                        index = node.output_recipes.index(connected_node)
+                                        if index < len(node.recipe_list[node.rec_num]['iO']):
+                                                self.destroy_connection(node, node.recipe_list[node.rec_num]['iO'][index]['lN'], False)
+                                        else:
+                                                self.destroy_connection(node, node.recipe_list[node.rec_num]['fO'][index - len(node.recipe_list[node.rec_num]['iO'])]['lN'], False)
+
+        def destroy_connection(self, node, item_name, is_input):#to remove a relation
+                if is_input:
+                        if (node.lines_in != None):
+                                index = None
+                                for i in range(len(node.recipe_list[node.rec_num]['iI'])):
+                                        if (item_name == node.recipe_list[node.rec_num]['iI'][i]['lN'] ):
+                                                index = i
+                                for i in range(len(node.recipe_list[node.rec_num]['fI'])):
+                                        if (item_name == node.recipe_list[node.rec_num]['fI'][i]['lN'] ):
+                                                index = len(node.recipe_list[node.rec_num]['iI']) + i
+                                if (index == None) or (node.lines_in[index] == None):
+                                        return None
+                                canvas.delete(node.lines_in[index])
+                                node.lines_in[index] = None
+                                self.destroy_connection(node.input_recipes[index], item_name, not(is_input))
+                                node.input_recipes[index] = None
+                else:
+                        if (node.lines_out != None):
+                                index = None
+                                for i in range(len(node.recipe_list[node.rec_num]['iO'])):
+                                        if (item_name == node.recipe_list[node.rec_num]['iO'][i]['lN'] ):
+                                                index = i
+                                for i in range(len(node.recipe_list[node.rec_num]['fO'])):
+                                        if (item_name == node.recipe_list[node.rec_num]['fO'][i]['lN'] ):
+                                                index = len(node.recipe_list[node.rec_num]['iO']) + i
+                                if (index == None) or (node.lines_out[index] == None):
+                                        return None
+                                canvas.delete(node.lines_out[index])
+                                node.lines_out[index] = None
+                                self.destroy_connection(node.output_recipes[index], item_name, not(is_input))
+                                node.output_recipes[index] = None
+
+        def create_connection(self, item_name, output_rec_node, input_rec_node):#connects the nodes by the input node linking to the output
+                in_recipe = input_rec_node.recipe_list[input_rec_node.rec_num]
+                out_recipe = output_rec_node.recipe_list[output_rec_node.rec_num]
+                if (input_rec_node.input_recipes == None):#if it doesnt yet have the list initalized, could probably do this in reload()
+                        input_rec_node.input_recipes = [None] * (len(in_recipe['iI']) + len(in_recipe['fI']) )#make an empty list of input item size
+                        input_rec_node.lines_in = [None ] * (len(in_recipe['iI']) + len(in_recipe['fI']) )
+
+                if (output_rec_node.output_recipes == None):#if it doesnt yet have the list initalized #its a doubly linked list
+                        output_rec_node.output_recipes = [None] * (len(out_recipe['iO']) + len(out_recipe['fO']) )#make an empty list of input item size
+                        output_rec_node.lines_out = [None] * (len(out_recipe['iO']) + len(out_recipe['fO']) )
+
+                input_item_index = None
+                output_item_index = None
+                for i in range(len(in_recipe['iI'])) :
+                        if (item_name == in_recipe['iI'][i]['lN'] ):
+                                input_item_index = i
+                for i in range(len(in_recipe['fI'])) :
+                        if (item_name == in_recipe['fI'][i]['lN'] ):
+                                input_item_index = len(in_recipe['iI']) + i
+
+                for i in range(len(out_recipe['iO'])) :#BUG: Will not work with a shapped/shapeless recipe output
+                        if (item_name == out_recipe['iO'][i]['lN'] ):
+                                output_item_index = i
+                for i in range(len(out_recipe['fO'])) :
+                        if (item_name == out_recipe['fO'][i]['lN'] ):
+                                output_item_index = len(out_recipe['iO']) + i
+                
+                if (input_item_index != None and output_item_index != None) and (output_rec_node.lines_out[output_item_index] == None) and (input_rec_node.lines_in[input_item_index] == None):#limiting one input to one output
+                        input_rec_node.input_recipes[input_item_index] = output_rec_node
+                        output_rec_node.output_recipes[output_item_index] = input_rec_node
+
+                        new_line = canvas.create_line(
+                        output_rec_node.recipe_frame.winfo_x() + output_rec_node.items_frame.grid_slaves(0,1)[0].winfo_x() + output_rec_node.items_frame.grid_slaves(0,1)[0].winfo_width(),
+                        output_rec_node.recipe_frame.winfo_y() + output_rec_node.items_frame.winfo_y() + (1+2*output_item_index)*output_rec_node.items_frame.grid_slaves(0,1)[0].winfo_height()/2 ,
+                        input_rec_node.recipe_frame.winfo_x() + input_rec_node.items_frame.grid_slaves(0,0)[0].winfo_x(),
+                        input_rec_node.recipe_frame.winfo_y() + input_rec_node.items_frame.winfo_y() + (1+2*input_item_index)*input_rec_node.items_frame.grid_slaves(0,1)[0].winfo_height()/2,
+                        arrow =tk.LAST, fill = "black")
+                        input_rec_node.lines_in[input_item_index] = new_line
+                        output_rec_node.lines_out[output_item_index] = new_line
+                #print(output_rec_node.output_recipes, ';', input_rec_node.input_recipes)
+                #print(output_rec_node.lines_out , ',', output_rec_node.lines_in, '; ', input_rec_node.lines_out, ',', input_rec_node.lines_in)
+        
+        def update_connections(self, node):#to fix visual effects with lines
+                node.recipe_frame.update()
+                if (node.input_recipes != None):
+                        for i in range(len(node.input_recipes)):
+                                if (node.input_recipes[i] != None):
+                                        x1, y1, x2, y2 = canvas.coords(node.lines_in[i])
+                                        canvas.coords(node.lines_in[i], x1, y1, node.recipe_frame.winfo_x() + node.items_frame.grid_slaves(0,0)[0].winfo_x(),
+                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,1)[0].winfo_height()/2)
+
+                if (node.output_recipes != None):
+                        for i in range(len(node.output_recipes)):
+                                if (node.output_recipes[i] != None):
+                                        x1, y1, x2, y2 = canvas.coords(node.lines_out[i])
+                                        canvas.coords(node.lines_out[i], node.recipe_frame.winfo_x() + node.items_frame.grid_slaves(0,1)[0].winfo_x() + node.items_frame.grid_slaves(0,1)[0].winfo_width(),
+                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,1)[0].winfo_height()/2, x2, y2)
+
         
         #make draggable
         def on_drag_start(self, event):
@@ -276,16 +411,36 @@ class RecipeNode():
                 x = widget.winfo_x() - widget._drag_start_x + event.x
                 y = widget.winfo_y() - widget._drag_start_y + event.y
                 widget.place(x=x, y=y)
+                for line in widget.node.lines_out:
+                        if line != None:
+                                x1, y1, x2, y2 = canvas.coords(line)
+                                canvas.coords(line, x1 - widget._drag_start_x + event.x, y1 - widget._drag_start_y + event.y, x2, y2)
+                
+                for line in widget.node.lines_in:
+                        if line != None:
+                                x1, y1, x2, y2 = canvas.coords(line)
+                                canvas.coords(line, x1, y1, x2 - widget._drag_start_x + event.x, y2 - widget._drag_start_y + event.y)
                 
         def make_draggable(self, widget):
                 widget.bind("<Button-1>", self.on_drag_start)
                 widget.bind("<B1-Motion>", self.on_drag_motion)
+
+        def do_popup_menu(self, event, item, is_input):
+                self.popup_item = item
+                self.popup_is_input = is_input
+                try:
+                        self.popup_menu.entryconfig(0, label = item)
+                        self.popup_menu.tk_popup(event.x_root, event.y_root)
+                finally:
+                        self.popup_menu.grab_release()
 
 
 
 
 #Window settings
 root = tk.Tk()
+canvas = tk.Canvas(root )
+canvas.pack(fill = tk.BOTH, expand = tk.YES)
 app = Main(root)
 
 
