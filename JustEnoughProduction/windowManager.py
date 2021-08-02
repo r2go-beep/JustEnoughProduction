@@ -6,10 +6,6 @@ from recipeManager import JSONIndexer
 
 item_fluid_dict = {}
 
-#To do: connect nodes visually and actually
-#       make shapped recipes condenced
-#       allow for node condencation
-
 null_recipe = {'Cannot Find Item In Context':[{'en': True, 'dur':0,'eut':0,'iI':[],'iO':[],'fI':[],'fO':[]}]}
 
 class Main(tk.Frame):
@@ -39,12 +35,12 @@ class Main(tk.Frame):
                 top_menu_frame = Frame(root, )
                 top_menu_frame.place(x = 0, y = 0)
 
-                #button for new efficency node
-                new_efficency_node_button = Button(top_menu_frame,style = 'default.TButton',text='New Efficency Node',command=lambda:EfficencyNode())
-                new_efficency_node_button.grid(row = 0, column = 0)
+                #button for new Efficiency node
+                new_Efficiency_node_button = Button(top_menu_frame,style = 'default.TButton',text='New Efficiency Node',command=lambda:EfficiencyNode())
+                new_Efficiency_node_button.grid(row = 0, column = 0)
 
                 #button for a new recipe node
-                new_crafting_node_button = Button(top_menu_frame,style = 'default.TButton',text='New Crafting Node',command=lambda:RecipeNode(''))
+                new_crafting_node_button = Button(top_menu_frame,style = 'default.TButton',text='New Crafting Node',command=lambda:RecipeNode('',True))
                 new_crafting_node_button.grid(row = 0, column = 1)
 
                 #read and index from file
@@ -56,12 +52,12 @@ class Main(tk.Frame):
                 file_button.grid( row = 0, column = 3 )
                 load_and_index()
 
-                RecipeNode('Oil')
+                RecipeNode('Oil',True)
 
 #-------------------------------------
 #make a new recipe node 
 class RecipeNode():
-        def __init__(self, item_name):
+        def __init__(self, item_name, is_input_item):
                 global item_fluid_dict
                 self.item_name = item_name
 
@@ -140,6 +136,10 @@ class RecipeNode():
                 self.var_usage.set(self.usage_options[0])#default value
                 self.var_usage.trace ('w', lambda a,b,c : self.update_item_query() )
                 self.usage_dropdown = OptionMenu(self.recipe_frame , self.var_usage, self.usage_options[0], *self.usage_options) 
+                if is_input_item:
+                        self.usage_dropdown = OptionMenu(self.recipe_frame , self.var_usage, self.usage_options[0], *self.usage_options) 
+                else:
+                        self.usage_dropdown = OptionMenu(self.recipe_frame , self.var_usage, self.usage_options[1], *self.usage_options) 
                 self.usage_dropdown.config(style = 'default.TMenubutton')
                 self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
 
@@ -186,21 +186,18 @@ class RecipeNode():
                 #right click menu for items
                 self.popup_item = ''
                 self.popup_is_input = True#True if item is apart of the input
-                def search_create():
-                        self.create_connection(self.popup_item, self, RecipeNode(self.popup_item))
 
                 self.popup_menu = Menu(root, tearoff = 0)
-                self.popup_menu.add_command(label = self.popup_item)#able to add a command here but nothing comes to mind yet
+                self.popup_menu.add_command(label = self.popup_item)#command is updated when making popup
                 self.popup_menu.add_separator()
-                self.popup_menu.add_command(label = 'Search', command = lambda: RecipeNode(self.popup_item) )
+                self.popup_menu.add_command(label = 'Search', command = lambda: RecipeNode(self.popup_item, True) )#command is updated when making popup
                 self.popup_menu.add_command(label = 'Connect', command = lambda: self.do_potential_action())
-                self.popup_menu.add_command(label = 'Search & Connect', command = lambda: search_create())
+                self.popup_menu.add_command(label = 'Search & Connect', command = lambda: self.search_create(True) )#command is updated when making popup
                 self.popup_menu.add_command(label = 'Disconnect', command = lambda: self.destroy_connection(self, self.get_item_index(self.popup_item,self.recipe_list[self.rec_num], self.popup_is_input), self.popup_is_input, True))
                 self.popup_menu.add_command(label = 'Fix Arrows', command = lambda: self.update_connections(self))
                 self.popup_menu.add_command(label = 'Delete Node', command = lambda: remove_node())
 
                 self.update_item_query()#load
-        #---------------END __INIT__----------------------
 
         #updates duration_label and input/output items
         def reload(self): 
@@ -369,6 +366,12 @@ class RecipeNode():
                                                 self.destroy_connection(node.output_recipes[index], connected_node_index, not(is_input), False)
                                         node.output_recipes[index] = None
 
+        def search_create(self, is_input):
+                if is_input:
+                        self.create_connection(self.popup_item, self, RecipeNode(self.popup_item,is_input))
+                else:
+                        self.create_connection(self.popup_item, RecipeNode(self.popup_item,is_input), self)
+
         def create_connection(self, item_name, output_node, input_node):#connects the nodes by the input node linking to the output
                 in_recipe = input_node.current_recipe
                 out_recipe = output_node.current_recipe
@@ -454,13 +457,15 @@ class RecipeNode():
                 self.popup_is_input = is_input
                 try:
                         self.popup_menu.entryconfig(0, label = item)
+                        self.popup_menu.entryconfig(2, command = lambda: RecipeNode(self.popup_item, not(is_input)) ) 
+                        self.popup_menu.entryconfig(4, command = lambda: self.search_create(not(is_input))) 
                         self.popup_menu.tk_popup(event.x_root, event.y_root)
                 finally:
                         self.popup_menu.grab_release()
 
 #-------------------------------------
-#make a new efficency node
-class EfficencyNode():
+#make a new Efficiency node
+class EfficiencyNode():
         def __init__(self):
                 self.frame = Frame(root, style = 'recipe.TFrame' )
                 self.frame.node = self
@@ -476,21 +481,34 @@ class EfficencyNode():
 
                 #input amount and items/fluids
                 input_title_label = Label(self.frame,style='info_box.TLabel',text = 'Inputs:')
-                input_title_label.grid( row = 1, column = 0 )
+                input_title_label.grid( row = 2, column = 0 )
 
-                #Efficency between input and output
+                #Efficiency between input and output
                 output_title_label = Label(self.frame,style='small_info_box.TLabel',text = 'Eff:')
-                output_title_label.grid( row = 1, column = 1 )
+                output_title_label.grid( row = 2, column = 1 )
 
                 #output amount items/fluids
-                output_title_label = Label(self.frame,style='info_box.TLabel',text = 'Output:')
-                output_title_label.grid( row = 1, column = 2 )
+                output_title_label = Label(self.frame,style='info_box.TLabel',text = 'Product:')
+                output_title_label.grid( row = 2, column = 2 )
+
+                #EU amount total
+                self.eu_label = Label(self.frame,style='info_box.TLabel',text = 'Eu/t:0')
+                self.eu_label.grid( row = 1, column = 0 )
+
+                #amount entry
+                self.amount_entry = Entry(self.frame  )
+                self.amount_entry.insert(0,64)
+                self.amount_entry.grid(row = 1, column = 1, columnspan = 2, sticky = 'w')
+
+                #amount search button
+                self.amount_button = Button(self.frame, text = 'Go', command = lambda: self.populate_input() )
+                self.amount_button.grid(row = 1, column = 2, sticky = 'e')
 
                 self.items_frame = Frame(self.frame, style = 'recipe.TFrame' )
-                self.items_frame.grid( row = 2, column = 0)
+                self.items_frame.grid( row = 3, column = 0, columnspan = 3)
 
-                self.select_head_button = Button(self.frame ,text = 'Click Output Item', command = lambda:self.do_potential_action())
-                self.select_head_button.grid( row = 2, column = 2)
+                self.select_head_button = Button(self.frame, text = 'Click Output Item', command = lambda:self.do_potential_action())
+                self.select_head_button.grid( row = 3, column = 2)
 
         def get_clicked(self, event):
                 root.unbind('<Button-1>')
@@ -503,43 +521,78 @@ class EfficencyNode():
                 else:
                         if hasattr(self.potential_connect.master.master, 'node') and isinstance(self.potential_connect.master.master.node, RecipeNode):
                                 self.head_node = self.potential_connect.master.master.node
-                                if self.potential_connect.grid_info()['column'] == 0:
-                                        self.head_item = self.head_node.get_item(self.potential_connect.grid_info()['row'], self.head_node.current_recipe, True)#probably shouldnt use GUI to find rec
-                                else:
+                                if self.potential_connect.grid_info()['column'] == 1:
                                         self.head_item = self.head_node.get_item(self.potential_connect.grid_info()['row'], self.head_node.current_recipe, False)
-
+                                else:
+                                        self.potential_connect = None
+                                        return
+                                self.head_item_name = self.head_item['lN']
+                                self.populate_input()
+                        else:
+                                self.potential_connect = None
 
         def populate_input(self):
+                for child in self.items_frame.winfo_children():#clear out the children to remake them
+                        child.destroy()
+
+                if (self.head_item_name and 
+                                self.head_node.get_item_index(self.head_item_name, self.head_node.current_recipe, True) == None and
+                                self.head_node.get_item_index(self.head_item_name, self.head_node.current_recipe, False) == None):
+                        self.potential_connect = None
+                        self.head_item = None
+                        self.head_item_name = None
+                        self.select_head_button.grid( row = 3, column = 2)
+                        return
+
                 self.select_head_button.grid_forget()
+                self.eu_label['text'] = 'Eu/t:'+ str(self.get_eu(self.head_node))
+                amount = self.amount_entry.get()
 
-                output_item_label = Label(self.items_frame, style='item.TLabel', text = self.head_item['lN'])
-                output_item_label.grid(row = 0, column = 2)
+                if str.isnumeric(amount):
+                        count_row = 0
+                        for input_item in self.get_inputs(self.head_node, self.head_item['lN'], float(amount)):
+                                label_item = Label(self.items_frame,style = 'item.TLabel',text = ('%.2f' % input_item[1])+'x'+input_item[0] )
+                                label_item.grid( row = count_row, column = 0 )
+                                
+                                eff_num = 0
+                                if input_item[1]:
+                                        eff_num = float(amount)/input_item[1]
+                                else:
+                                        eff_num = 'inf'
+                                eff_item_label = Label(self.items_frame, style='small_info_box.TLabel', text = eff_num)
+                                eff_item_label.grid(row = count_row, column = 1)
+                                count_row += 1
 
-                print(self.get_inputs(self.head_node,self.head_item ))
-
-
-        #draggable support
-        def on_drag_motion(self, event):
+                        self.output_item_label = Label(self.items_frame, style='item.TLabel', text = amount +'x'+ self.head_item['lN'])
+                        self.output_item_label.grid(row = 0, column = 2)
+        
+        def on_drag_motion(self, event): # draggable support
                 widget = event.widget
                 x = widget.winfo_x() - widget._drag_start_x + event.x
                 y = widget.winfo_y() - widget._drag_start_y + event.y
                 widget.place(x=x, y=y)
 
-        def get_inputs(self, node, output_item):
-                item_efficency_list = []
+        def get_eu(self, node):
+                prev_eu = node.current_recipe['eut']
+                if node.input_recipes != None:
+                        for i in range( len(node.current_recipe['iI']) + len(node.current_recipe['fI']) ):
+                                if node.input_recipes[i] != None:
+                                        prev_eu += self.get_eu(node.input_recipes[i])
+                return prev_eu
+
+        def get_inputs(self, node, output_item_name, amount):
+                item_efficiency_list = [] # array 0 is name, 1 is amount
+                output_item = node.get_item( node.get_item_index(output_item_name, node.current_recipe, False), node.current_recipe, False )
+                ratio =  amount / output_item['a'] 
                 for i in range( len(node.current_recipe['iI']) + len(node.current_recipe['fI']) ):
                         if node.input_recipes == None or node.input_recipes[i] == None:
                                 item = node.get_item(i, node.current_recipe, True)
-                                if item['a'] != 0:
-                                        item_efficency_list.append([item['lN'], (item['a'] / output_item['a']) ])
-                                else:
-                                        item_efficency_list.append([item['lN'], item['a'] ])
+                                item_efficiency_list.append([ item['lN'], (item['a'] * ratio) ])
                         else:
-                                item_efficency_list.extend( self.get_inputs(node.input_recipes[i], node.get_item(i, node.current_recipe, True)) ) 
-                return item_efficency_list
+                                item_to_find_children_of = node.get_item(i, node.current_recipe, True)
+                                item_efficiency_list.extend( self.get_inputs(node.input_recipes[i], item_to_find_children_of['lN'], item_to_find_children_of['a']*ratio) ) 
+                return item_efficiency_list
 
-
-#potential
 #gloable draggable support
 def on_drag_start(event):
         widget = event.widget
