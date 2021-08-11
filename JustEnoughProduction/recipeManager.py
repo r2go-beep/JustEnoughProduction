@@ -16,8 +16,8 @@ class JSONIndexer:
             self.input_in = {}
 
     def read_json(self, recipe_file):
-        #read file
         print("Starting to read from file...", recipe_file)
+        os.chdir(sys.path[0])
         with open(recipe_file,'r', errors = 'replace') as json_file:
             recipe_dict = json.load(json_file)
         print("Completed file reading.")

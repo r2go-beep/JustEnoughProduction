@@ -8,6 +8,17 @@ item_fluid_dict = {}
 
 null_recipe = {'Cannot Find Item In Context':[{'en': True, 'dur':0,'eut':0,'iI':[],'iO':[],'fI':[],'fO':[]}]}
 
+"""
+TODO:
+        Feature - Save state / Load state
+        Feature - Simple Storage Node: only includes item name, input item = output item: 1 to 1
+        Feature - Smart Recipe Select: When output changes try to find a recipe to preserve the output of the next machine
+        Feature - Better search: Replace text entry with a button that opens a NEI-like window that shows item images
+                Image Generation: Find/Load Item images from modpack dir
+        Investigate/Fix: Sometimes Connection lines do not line up correctly
+
+"""
+
 class Main(tk.Frame):
         def __init__(self, master):
                 global item_fluid_dict
@@ -148,10 +159,9 @@ class RecipeNode():
                         self.destroy_all_connection(self)
                         self.recipe_frame.destroy()
                 exit_button = Button(self.recipe_frame ,style='exit_button.TButton', text = 'X', command = lambda:remove_node())#need to also remove the line
-                exit_button.grid( row = 0, column = 1, sticky = 'e' )
+                exit_button.grid( row = 0, column = 0, columnspan = 2, sticky = 'e' )
 
-                #Minimize button
-                sel = 0
+                #Middelize button
                 def show_search_inputs():
                         self.search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')#make sure this is the same as when init
                         self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
@@ -171,16 +181,74 @@ class RecipeNode():
                         self.machine_label['text'] = self.var_machine.get()
                         self.update_visual_connections(self)
 
-                def min_max_widget():
-                        nonlocal sel
-                        if (sel == 0):
-                                hide_search_inputs()
-                        else:
-                                show_search_inputs()
-                        sel = (sel + 1) % 2
+                mid_sel = 0
+                def mid_max_widget():
+                        nonlocal mid_sel
+                        if mid_sel != None:
+                                if (mid_sel == 0):
+                                        hide_search_inputs()
+                                else:
+                                        show_search_inputs()
+                                mid_sel = (mid_sel + 1) % 2
 
-                minimize_button = Button(self.recipe_frame ,style='exit_button.TButton', text = '_', command = lambda:min_max_widget())
-                minimize_button.grid( row = 0, column = 1, sticky = 'e',  padx = 20)
+                middelize_button = Button(self.recipe_frame ,style='exit_button.TButton', text = '-', command = lambda:mid_max_widget())
+                middelize_button.grid( row = 0, column = 0, columnspan = 2, sticky = 'e',  padx = 20)
+
+                #Minimize button
+                def show_all_inputs():
+                        self.search_entry.grid(row = 1, column = 0, columnspan = 2, sticky = 'ew')#make sure this is the same as when init
+                        self.usage_dropdown.grid( row = 1, column =1, sticky = 'e')
+                        inc_rec_button.grid( row = 3, column = 1, sticky = 'n')
+                        dec_rec_button.grid( row = 3, column = 0, sticky = 'n')
+                        self.rec_out_of_label.grid( row = 3, column = 0, columnspan = 2, sticky = 'n')
+                        self.machine_dropdown.grid( row = 2, column = 0 )
+
+                        input_title_label.grid( row = 4, column = 0 )
+                        output_title_label.grid( row = 4, column = 1 )
+                        self.duration_label.grid( row = 2, column = 1 )
+
+                        self.reload()
+
+                def hide_all_inputs():
+                        self.search_entry.grid_forget()
+                        self.usage_dropdown.grid_forget()
+                        inc_rec_button.grid_forget()
+                        dec_rec_button.grid_forget()
+                        self.rec_out_of_label.grid_forget()
+                        self.machine_dropdown.grid_forget()
+                        self.machine_label['text'] = self.var_machine.get()
+
+                        input_title_label.grid_forget()
+                        output_title_label.grid_forget()
+                        self.duration_label.grid(row = 3, column = 0)
+                        
+                        for input_item_index in range(len(self.current_recipe['iI']+self.current_recipe['fI'])):#get rid of inp
+                                for input_item_widget in self.items_frame.grid_slaves(input_item_index, 0):
+                                        input_item_widget.lower()
+                                        input_item_widget.grid(row = 0, column = 0)
+                        for input_item_index in range(len(self.current_recipe['iO']+self.current_recipe['fO'])):
+                                for input_item_widget in self.items_frame.grid_slaves(input_item_index, 1):
+                                        input_item_widget.grid(row = input_item_index, column = 0)
+                                        if input_item_index < len(self.current_recipe['iO']):
+                                                input_item_widget['text'] = self.current_recipe['iO'][input_item_index]['lN']
+                                        else:
+                                                input_item_widget['text'] = self.current_recipe['fO'][input_item_index-len(self.current_recipe['iO'])]['lN']
+                        self.update_visual_connections(self)
+
+                min_sel = 0
+                def min_max_widget():
+                        nonlocal min_sel
+                        nonlocal mid_sel
+                        if (min_sel == 0):
+                                hide_all_inputs()
+                                mid_sel = None
+                        else:
+                                show_all_inputs()
+                                mid_sel = 0
+                        min_sel = (min_sel + 1) % 2
+
+                middelize_button = Button(self.recipe_frame ,style='exit_button.TButton', text = '_', command = lambda:min_max_widget())
+                middelize_button.grid( row = 0, column = 0, columnspan = 2, sticky = 'e',  padx = 40)
 
                 #------------------------------------
                 #right click menu for items
@@ -392,7 +460,7 @@ class RecipeNode():
                         output_node.output_recipes[output_item_index] = input_node
 
                         new_line = canvas.create_line(
-                        output_node.recipe_frame.winfo_x() + output_node.items_frame.grid_slaves(0,1)[0].winfo_x() + output_node.items_frame.grid_slaves(0,1)[0].winfo_width(),
+                        output_node.recipe_frame.winfo_x() + output_node.items_frame.grid_slaves(0,1)[0].winfo_width()*2,
                         output_node.recipe_frame.winfo_y() + output_node.items_frame.winfo_y() + (1+2*output_item_index)*output_node.items_frame.grid_slaves(0,1)[0].winfo_height()/2 ,
                         input_node.recipe_frame.winfo_x() + input_node.items_frame.grid_slaves(0,0)[0].winfo_x(),
                         input_node.recipe_frame.winfo_y() + input_node.items_frame.winfo_y() + (1+2*input_item_index)*input_node.items_frame.grid_slaves(0,1)[0].winfo_height()/2,
@@ -428,13 +496,13 @@ class RecipeNode():
                                 if (node.input_recipes[i] != None):
                                         x1, y1, x2, y2 = canvas.coords(node.lines_in[i])
                                         canvas.coords(node.lines_in[i], x1, y1, node.recipe_frame.winfo_x() + node.items_frame.grid_slaves(0,0)[0].winfo_x(),
-                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,1)[0].winfo_height()/2)
+                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,0)[0].winfo_height()/2)
                 if node.output_recipes != None:
                         for i in range(len(node.output_recipes)):
                                 if (node.output_recipes[i] != None):
                                         x1, y1, x2, y2 = canvas.coords(node.lines_out[i])
-                                        canvas.coords(node.lines_out[i], node.recipe_frame.winfo_x() + node.items_frame.grid_slaves(0,1)[0].winfo_x() + node.items_frame.grid_slaves(0,1)[0].winfo_width(),
-                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,1)[0].winfo_height()/2, x2, y2)
+                                        canvas.coords(node.lines_out[i], node.recipe_frame.winfo_x() + node.items_frame.grid_slaves(0,0)[0].winfo_x() + node.items_frame.grid_slaves(0,0)[0].winfo_width(),
+                                        node.recipe_frame.winfo_y() + node.items_frame.winfo_y() + (1+2*i)*node.items_frame.grid_slaves(0,0)[0].winfo_height()/2, x2, y2)
 
         #draggable support
         def on_drag_motion(self, event):
@@ -550,7 +618,7 @@ class EfficiencyNode():
 
                 if str.isnumeric(amount):
                         count_row = 0
-                        for input_item in self.get_inputs(self.head_node, self.head_item['lN'], float(amount)):
+                        for input_item in self.condence_inputs(self.get_inputs(self.head_node, self.head_item['lN'], float(amount))):
                                 label_item = Label(self.items_frame,style = 'item.TLabel',text = ('%.2f' % input_item[1])+'x'+input_item[0] )
                                 label_item.grid( row = count_row, column = 0 )
                                 
@@ -579,6 +647,15 @@ class EfficiencyNode():
                                 if node.input_recipes[i] != None:
                                         prev_eu += self.get_eu(node.input_recipes[i])
                 return prev_eu
+
+        def condence_inputs(self, list_of_inputs):
+                result_dict = {}
+                for item in list_of_inputs:
+                        if item[0] in result_dict:
+                                result_dict[item[0]][1] += item[1]
+                        else:
+                                result_dict[item[0]] = item
+                return list(result_dict.values())
 
         def get_inputs(self, node, output_item_name, amount):
                 item_efficiency_list = [] # array 0 is name, 1 is amount
