@@ -9,5 +9,12 @@ Currently all items and their respective input and output recipes are loaded in 
 # Usage & Downloads
 Thankfully Python is relatively intuitive thus, running windowManager.py with IDLE or hopefully any Python interpreter that supports python3 should work for now. 
 
+# Examples 
+Fuel:
+![image](https://user-images.githubusercontent.com/59456156/133359051-cb8ced2b-6498-44bd-a581-c329b771e060.png)
+
+Electronic Circuit:
+![image](https://user-images.githubusercontent.com/59456156/133359495-9ae98b2e-5ef2-47b0-b697-b141272d484a.png)
+
 # Contributions
 Please contribute! This project is still very new and I would love the help. 
