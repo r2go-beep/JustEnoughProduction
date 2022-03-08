@@ -56,7 +56,7 @@ class Main(tk.Frame):
 
                 #read and index from file
                 file_entry=Entry(top_menu_frame, )
-                file_entry.insert(0,'2021-01-09_14-14-16.json')#default to json file for GTNH 2.1.0.0
+                file_entry.insert(0,'2022-03-08_18-26-32.json') #default to json file for GTNH 2.1.2.1
                 file_entry.grid( row = 0, column = 2 )
 
                 file_button=Button(top_menu_frame, text='Read & Index', command = lambda: load_and_index())
