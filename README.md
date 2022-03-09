@@ -7,7 +7,7 @@ JustEnoughProduction is a project to provide modded minecraft players an offline
 Currently all items and their respective input and output recipes are loaded in as a JSON file, created by the program RecEx which is used to export recipes from the game during runtime. I will not be providing these JSON recipe files, however for those in the GTNH discord the 2.1.0.0 recipe JSON currently is pinned in #mod-dev.
 
 # Usage & Downloads
-Thankfully Python is relatively intuitive thus, running windowManager.py with IDLE or hopefully any Python interpreter that supports python3 should work for now. 
+Thankfully Python is relatively intuitive thus, running windowManager.py with IDLE or hopefully any Python 3.9+ interpreter should work.
 
 # Examples 
 Fuel:
