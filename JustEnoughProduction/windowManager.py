@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, Menu
 from tkinter.ttk import *
 from recipeManager import JSONIndexer
+from enum import Enum
 
 item_fluid_dict = {}
 
@@ -18,6 +19,10 @@ TODO:
         Investigate/Fix: Sometimes Connection lines do not line up correctly
 
 """
+class MaterialType(Enum):  # need to refactor to include this
+        Item = 0
+        Fluid = 1
+
 
 class Main(tk.Frame):
         def __init__(self, master):
@@ -578,6 +583,8 @@ class EfficiencyNode():
                 self.select_head_button = Button(self.frame, text = 'Click Output Item', command = lambda:self.do_potential_action())
                 self.select_head_button.grid( row = 3, column = 2)
 
+
+
         def get_clicked(self, event):
                 root.unbind('<Button-1>')
                 self.potential_connect = event.widget
@@ -600,7 +607,7 @@ class EfficiencyNode():
                                 self.potential_connect = None
 
         def populate_input(self):
-                for child in self.items_frame.winfo_children():#clear out the children to remake them
+                for child in self.items_frame.winfo_children(): # clear out the children to remake them
                         child.destroy()
 
                 if (self.head_item_name and 
@@ -619,7 +626,13 @@ class EfficiencyNode():
                 if str.isnumeric(amount):
                         count_row = 0
                         for input_item in self.condence_inputs(self.get_inputs(self.head_node, self.head_item['lN'], float(amount))):
+                                
                                 label_item = Label(self.items_frame,style = 'item.TLabel',text = ('%.2f' % input_item[1])+'x'+input_item[0] )
+
+                                if input_item[3] == MaterialType.Fluid: # change color if its a fluid
+                                        label_item["text"] = "{:.2f}ml {}".format( input_item[1], input_item[0] ) 
+                                        label_item["style"] = 'fluid.TLabel'
+                                        
                                 label_item.grid( row = count_row, column = 0 )
                                 
                                 eff_num = 0
@@ -627,6 +640,7 @@ class EfficiencyNode():
                                         eff_num = float(amount)/input_item[1]
                                 else:
                                         eff_num = 'inf'
+
                                 eff_item_label = Label(self.items_frame, style='small_info_box.TLabel', text = eff_num)
                                 eff_item_label.grid(row = count_row, column = 1)
                                 count_row += 1
@@ -652,19 +666,24 @@ class EfficiencyNode():
                 result_dict = {}
                 for item in list_of_inputs:
                         if item[0] in result_dict:
-                                result_dict[item[0]][1] += item[1]
+                                if item[2] != result_dict[item[0]][2]: # if the output doesnt come from the same node
+                                        result_dict[item[0]][1] += item[1]
+                                else: # if the output comes from the same node 
+                                        if result_dict[item[0]][1] < item[1]: # take the max
+                                                result_dict[item[0]][1] = item[1] 
                         else:
                                 result_dict[item[0]] = item
                 return list(result_dict.values())
 
         def get_inputs(self, node, output_item_name, amount):
-                item_efficiency_list = [] # array 0 is name, 1 is amount
+                item_efficiency_list = [] # array 0 is name, 1 is amount, 2 is node, 3 is MaterialType
                 output_item = node.get_item( node.get_item_index(output_item_name, node.current_recipe, False), node.current_recipe, False )
                 ratio =  amount / output_item['a'] 
                 for i in range( len(node.current_recipe['iI']) + len(node.current_recipe['fI']) ):
                         if node.input_recipes == None or node.input_recipes[i] == None:
-                                item = node.get_item(i, node.current_recipe, True)
-                                item_efficiency_list.append([ item['lN'], (item['a'] * ratio) ])
+                                item = node.get_item(i, node.current_recipe, True) # line below is hacky assume fluids are indexed last
+                                item_efficiency_list.append([ item['lN'], (item['a'] * ratio), node, (MaterialType.Fluid if i >= len(node.current_recipe['iI']) else MaterialType.Item)])
+
                         else:
                                 item_to_find_children_of = node.get_item(i, node.current_recipe, True)
                                 item_efficiency_list.extend( self.get_inputs(node.input_recipes[i], item_to_find_children_of['lN'], item_to_find_children_of['a']*ratio) ) 
